@@ -1,0 +1,17 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build Backend",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "build",
+        "${workspaceFolder}/backend/backend.csproj"
+      ],
+      "group": "build",
+      "problemMatcher": "$msCompile",
+      "dependsOn": []
+    },
+  ]
+}

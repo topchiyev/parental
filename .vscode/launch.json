@@ -1,0 +1,14 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Backend",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build Backend",
+      "program": "${workspaceFolder}/backend/bin/Debug/net8.0/backend.dll",
+      "cwd": "${workspaceFolder}/backend",
+      "stopAtEntry": false,
+    },
+  ]
+}
