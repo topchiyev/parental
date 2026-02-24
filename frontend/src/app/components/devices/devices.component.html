@@ -22,7 +22,7 @@
         <tr>
           <th>ID</th>
           <th>Name</th>
-          <th>Username</th>
+          <th *ngIf="connection?.roleType == UserRoleType.ADMIN">Username</th>
           <th>Hard Locked</th>
           <th>Last Handshake</th>
           <th></th>
@@ -32,12 +32,9 @@
         <tr *ngFor="let device of devices">
           <td>{{ device.id }}</td>
           <td>{{ device.name }}</td>
-          <td>{{ device.username }}</td>
+          <td *ngIf="connection?.roleType == UserRoleType.ADMIN">{{ device.username }}</td>
           <td>{{ device.isManuallyLocked ? 'Yes' : 'No' }}</td>
-          <td>
-            <span *ngIf="device.lastHandshakeOn == 0">Never</span>
-            <span *ngIf="device.lastHandshakeOn != 0">{{ device.lastHandshakeOn | date:'short' }}</span>
-          </td>
+          <td>{{ formatDateTime(device.lastHandshakeOn) }}</td>
           <td class="text-end">
             <button class="btn btn-sm btn-primary" (click)="editDevice(device.id)">Edit</button>
             <button class="btn btn-sm btn-danger ms-1" (click)="deleteDevice(device.id)">Delete</button>

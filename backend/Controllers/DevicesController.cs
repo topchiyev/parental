@@ -32,9 +32,9 @@ public class DevicesController : ControllerBase
         return Ok(devices);
     }
 
-    [HttpGet("get/{id}")]
+    [HttpGet("get")]
     [AllowAnonymous]
-    public ActionResult<Device> Get(string id, [FromQuery] string handshake)
+    public ActionResult<Device> Get([FromQuery] string id, [FromQuery] string handshake)
     {
         var device = _dbRepository.GetEntities<Device>(d => d.Id == id).FirstOrDefault();
         if (device == null)
@@ -88,8 +88,8 @@ public class DevicesController : ControllerBase
         return Ok(device.Id);
     }
 
-    [HttpDelete("delete/{id}")]
-    public ActionResult Delete(string id)
+    [HttpDelete("delete")]
+    public ActionResult Delete([FromQuery] string id)
     {
         var existingDevice = _dbRepository.GetEntities<Device>(d => d.Id == id).FirstOrDefault();
         if (existingDevice == null)

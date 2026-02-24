@@ -62,7 +62,11 @@ export class DevicesComponent {
   }
 
   private async loadDevices(): Promise<void> {
-    this.devices = await this.devicesService.getList();
+    if (this.connection!.roleType == UserRoleType.ADMIN) {
+      this.devices = await this.devicesService.getList();
+    } else {
+      this.devices = await this.devicesService.getList(this.connection!.username);
+    }
   }
 
   showDeviceEditor(device: Device) {
@@ -123,6 +127,21 @@ export class DevicesComponent {
       return;
 
     this.currentDevice.lockedRanges.push({ startTime: 0, endTime: 0 });
+  }
+
+  formatDateTime(timestamp: number): string {
+    if (timestamp == 0) {
+      return 'Never';
+    }
+    const date = new Date(timestamp * 1000);
+    let value: string;
+    // dd-MM-yyyy HH:mm
+    value = date.getDate().toString().padStart(2, '0') + '-';
+    value += (date.getMonth() + 1).toString().padStart(2, '0') + '-';
+    value += date.getFullYear() + ' ';
+    value += date.getHours().toString().padStart(2, '0') + ':';
+    value += date.getMinutes().toString().padStart(2, '0');
+    return value;
   }
 
 }

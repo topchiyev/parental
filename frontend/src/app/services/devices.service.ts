@@ -13,7 +13,7 @@ export class DevicesService {
     private http: HttpClient
   ) { }
 
-  async getList(): Promise<Device[]> {
+  async getList(username?: string): Promise<Device[]> {
     while (!this.environmentService.isReady()) {
       await new Promise(resolve => setTimeout(resolve, 100));
     }
@@ -27,6 +27,9 @@ export class DevicesService {
       this.http.get<Device[]>(`${backendUrl}/Devices/list`, {
         headers: {
           Authorization: `Bearer ${token}`
+        },
+        params: {
+          username: username || ''
         }
       }).subscribe({
         next: (response) => {
