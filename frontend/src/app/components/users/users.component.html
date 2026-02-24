@@ -1,0 +1,81 @@
+<div class="card mt-3">
+  <nav class="navbar navbar-expand-sm navbar-light bg-body-secondary px-3 py-1 rounded-top border-bottom">
+    <span class="navbar-brand"><b>Users</b></span>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#usersActions"
+      aria-controls="usersActions" aria-expanded="false" aria-label="Expand">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="usersActions">
+      <ul class="navbar-nav ms-auto">
+        <li class="nav-item">
+          <button class="nav-link" type="button" (click)="createUser()">
+            <span><b> Create user</b></span>
+          </button>
+        </li>
+      </ul>
+    </div>
+  </nav>
+
+  <div class="card-body">
+    <table class="table table-sm table-stripped">
+      <thead>
+        <tr>
+          <th>Username</th>
+          <th>Role</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let user of users">
+          <td>{{ user.username }}</td>
+          <td>{{ UserRoleType[user.roleType] }}</td>
+          <td class="text-end">
+            <button class="btn btn-sm btn-primary" (click)="editUser(user.username)">Edit</button>
+            <button class="btn btn-sm btn-danger ms-1" (click)="deleteUser(user.username)">Delete</button>
+          </td>
+        </tr>
+        <tr *ngIf="users.length == 0">
+          <td colspan="3" class="text-info">No users found</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<ng-template #userEditorTemplate>
+  <div class="modal-content" *ngIf="currentUser">
+    <div class="modal-header">
+      <h5 class="modal-title" id="newProjectModalLabel">{{ isNewUser ? "New User" : "User"}}</h5>
+    </div>
+    <div class="form-group p-3">
+      <label class="form-label">Username</label>
+      <div class="input-group">
+        <input type="text" class="form-control form-control-sm" [(ngModel)]="currentUser.username"
+          [disabled]="!isNewUser" autocomplete="new-password">
+      </div>
+    </div>
+    <div class="form-group p-3">
+      <label class="form-label">Password</label>
+      <div class="input-group">
+        <input [type]="isPasswordVisible ? 'text' : 'password'" class="form-control form-control-sm"
+          [(ngModel)]="currentUser.password" autocomplete="new-password" />
+        <div class="input-group-append">
+          <button class="btn btn-warning rounded-end-2" style="border-radius: 0;" type="button"
+            (click)="togglePasswordVisibility()">{{ isPasswordVisible ? 'Hide' : 'Reveal' }}</button>
+        </div>
+      </div>
+    </div>
+    <div class="form-group p-3">
+      <label class="form-label">Role</label>
+      <select class="form-select form-select-sm" [(ngModel)]="currentUser.roleType" [disabled]="!isNewUser">
+        <option *ngFor="let item of availableRoles" [value]="item">
+          {{ UserRoleType[item] }}
+        </option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button type="button" (click)="submitUserEditor()" class="btn btn-primary">Save</button>
+      <button type="button" (click)="closeUserEditor()" class="btn btn-secondary">Close</button>
+    </div>
+  </div>
+</ng-template>

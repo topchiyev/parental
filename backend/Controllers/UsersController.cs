@@ -48,9 +48,9 @@ public class UsersController : ControllerBase
         if (string.IsNullOrEmpty(item.Password))
             return BadRequest("Password is required");
 
-        // Password has at lest 6 characters and at most 20 characters
-        if (item.Password.Length < 6 || item.Password.Length > 20)
-            return BadRequest("Password must be between 6 and 20 characters");
+        // Password has at lest 4 characters and at most 20 characters
+        if (item.Password.Length < 4 || item.Password.Length > 20)
+            return BadRequest("Password must be between 4 and 20 characters");
 
         // Password contains only english letters, numbers, underscores, dashes
         if (!item.Password.All(c => char.IsLetterOrDigit(c) || c == '_' || c == '-'))
@@ -67,7 +67,7 @@ public class UsersController : ControllerBase
         return Ok();
     }
 
-    [HttpPatch("update")]
+    [HttpPost("update")]
     [Authorize(Roles = nameof(UserRoleType.ADMIN))]
     public ActionResult<User> Update(User item)
     {
@@ -88,9 +88,9 @@ public class UsersController : ControllerBase
         if (string.IsNullOrEmpty(item.Password))
             return BadRequest("Password is required");
 
-        // Password has at lest 6 characters and at most 20 characters
-        if (item.Password.Length < 6 || item.Password.Length > 20)
-            return BadRequest("Password must be between 6 and 20 characters");
+        // Password has at lest 4 characters and at most 20 characters
+        if (item.Password.Length < 4 || item.Password.Length > 20)
+            return BadRequest("Password must be between 4 and 20 characters");
 
         // Password can contain only english letters, numbers, underscores, dashes
         if (!item.Password.All(c => char.IsLetterOrDigit(c) || c == '_' || c == '-'))
@@ -112,9 +112,9 @@ public class UsersController : ControllerBase
         return existingItem;
     }
 
-    [HttpDelete("delete/{username}")]
+    [HttpDelete("delete")]
     [Authorize(Roles = nameof(UserRoleType.ADMIN))]
-    public ActionResult Delete(string username)
+    public ActionResult Delete([FromQuery] string username)
     {
         var existingItem = _dbRepository.GetEntities<User>(t => t.Username == username).FirstOrDefault();
         if (existingItem == null)

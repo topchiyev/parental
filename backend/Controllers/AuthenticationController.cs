@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using Parental.Backend.Models.Entity;
+using Parental.Backend.Models.Enum;
 using Parental.Backend.Repositories;
 
 namespace Parental.Backend.Controllers;
@@ -23,6 +24,13 @@ public class AuthenticationController : ControllerBase
     {
         public string Username { get; set; }
         public string Password { get; set; }
+    }
+
+    public class Connection
+    {
+        public string Username { get; set; }
+        public string Token { get; set; }
+        public UserRoleType RoleType { get; set; }
     }
 
     private readonly ILogger<AuthenticationController> _logger;
@@ -57,7 +65,7 @@ public class AuthenticationController : ControllerBase
 
     [HttpPost("login")]
     [AllowAnonymous]
-    public ActionResult<string> LogIn(LogInRequest request)
+    public ActionResult<Connection> LogIn(LogInRequest request)
     {
         if (_key == null)
             return StatusCode(500, "JWT token key not configured");
@@ -91,6 +99,28 @@ public class AuthenticationController : ControllerBase
 
         var tokenStr = tokenHandler.WriteToken(token);
 
-        return Ok(tokenStr);
+        var response = new Connection
+        {
+            Username = user.Username,
+            RoleType = user.RoleType,
+            Token = tokenStr
+        };
+
+        return Ok(response);
+    }
+
+    [HttpGet("validateConnection")]
+    [Authorize]
+    public ActionResult ValidateConnection()
+    {
+        var username = User.Identity?.Name;
+        if (string.IsNullOrEmpty(username))
+            return Unauthorized("Invalid token");
+
+        var user = _dbRepository.GetEntities<User>(u => u.Username == username).FirstOrDefault();
+        if (user == null)
+            return Unauthorized("User not found");
+
+        return Ok();
     }
 }

@@ -1,0 +1,121 @@
+<div class="card mt-3">
+  <nav class="navbar navbar-expand-sm navbar-light bg-body-secondary px-3 py-1 rounded-top border-bottom">
+    <span class="navbar-brand"><b>Devices</b></span>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#devicesActions"
+      aria-controls="devicesActions" aria-expanded="false" aria-label="Expand">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="devicesActions">
+      <ul class="navbar-nav ms-auto">
+        <li class="nav-item">
+          <button class="nav-link" type="button" (click)="createDevice()">
+            <span><b> Create device</b></span>
+          </button>
+        </li>
+      </ul>
+    </div>
+  </nav>
+
+  <div class="card-body">
+    <table class="table table-sm table-stripped">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Username</th>
+          <th>Hard Locked</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let device of devices">
+          <td>{{ device.id }}</td>
+          <td>{{ device.name }}</td>
+          <td>{{ device.username }}</td>
+          <td>{{ device.isManuallyLocked ? 'Yes' : 'No' }}</td>
+          <td class="text-end">
+            <button class="btn btn-sm btn-primary" (click)="editDevice(device.id)">Edit</button>
+            <button class="btn btn-sm btn-danger ms-1" (click)="deleteDevice(device.id)">Delete</button>
+          </td>
+        </tr>
+        <tr *ngIf="devices.length == 0">
+          <td colspan="5" class="text-info">No devices found</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<ng-template #deviceEditorTemplate>
+  <div class="modal-content" *ngIf="currentDevice">
+    <div class="modal-header">
+      <h5 class="modal-title">{{ currentDevice.id == '' ? "New Device" : "Device"}}</h5>
+    </div>
+    <div class="form-group p-3">
+      <label class="form-label">ID</label>
+      <div class="input-group">
+        <input type="text" class="form-control form-control-sm" [(ngModel)]="currentDevice.id" [disabled]="true">
+      </div>
+    </div>
+    <div class="form-group p-3">
+      <label class="form-label">Name</label>
+      <div class="input-group">
+        <input type="text" class="form-control form-control-sm" [(ngModel)]="currentDevice.name">
+      </div>
+    </div>
+    <div class="form-group p-3">
+      <label class="form-label">User</label>
+      <select class="form-select form-select-sm" [(ngModel)]="currentDevice.username" [disabled]="currentDevice.id != '' && connection?.roleType == UserRoleType.ADMIN">
+        <option *ngFor="let item of users" [value]="item.username">
+          {{ item.username }}
+        </option>
+      </select>
+    </div>
+    <div class="form-group p-3">
+      <label class="form-label">Hard Locked</label>
+      <div class="input-group">
+        <button type="button" class="form-control form-control-sm btn btn-outline-secondary"
+          [ngClass]="{'active': currentDevice.isManuallyLocked}"
+          (click)="currentDevice.isManuallyLocked = !currentDevice.isManuallyLocked">Yes</button>
+        <button type="button" class="form-control form-control-sm btn btn-outline-secondary"
+          [ngClass]="{'active': !currentDevice.isManuallyLocked}"
+          (click)="currentDevice.isManuallyLocked = !currentDevice.isManuallyLocked">No</button>
+      </div>
+    </div>
+    <div class="modal-header">
+      <h5 class="modal-title">Locked Ranges</h5>
+    </div>
+    <div class="modal-body">
+      <table class="table table-stripped">
+        <thead>
+          <tr>
+            <th>From</th>
+            <th>To</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let range of currentDevice.lockedRanges">
+            <td>
+              <app-time-field [(time)]="range.startTime"></app-time-field>
+            </td>
+            <td>
+              <app-time-field [(time)]="range.endTime"></app-time-field>
+            </td>
+            <td class="text-end">
+              <button class="btn btn-sm btn-danger ms-1">Delete</button>
+            </td>
+          </tr>
+          <tr *ngIf="currentDevice.lockedRanges.length == 0">
+            <td colspan="3" class="text-info">No items</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="modal-footer">
+      <button type="button" (click)="addLockedRange()" class="btn btn-primary">Add Range</button>
+      <button type="button" (click)="submitDeviceEditor()" class="btn btn-primary">Save</button>
+      <button type="button" (click)="closeDeviceEditor()" class="btn btn-secondary">Close</button>
+    </div>
+  </div>
+</ng-template>

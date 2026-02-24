@@ -1,0 +1,12 @@
+<div class="d-flex justify-content-center pt-4">
+  <div class="card">
+    <div class="card-header">
+      <h4>Log in</h4>
+    </div>
+    <div class="card-body">
+      <input type="text" class="form-control mb-3" #usernameInput placeholder="Username" [(ngModel)]="username" (keyup.enter)="focusPassword()">
+      <input type="password" class="form-control mb-3" #passwordInput placeholder="Password" [(ngModel)]="password" (keyup.enter)="login()">
+      <button type="button" class="btn btn-primary w-100" (click)="login()">Log in</button>
+    </div>
+  </div>
+</div>

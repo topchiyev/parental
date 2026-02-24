@@ -32,9 +32,9 @@ public class Program
         builder.Services.AddCors(options => options.AddPolicy(_originPolicy,
             configurationBuilder => configurationBuilder
                 .SetIsOriginAllowed(_ => true)
-                .WithExposedHeaders("Content-Disposition")
                 .AllowAnyMethod()
                 .AllowAnyHeader()
+                .WithExposedHeaders("Content-Disposition")
                 .AllowCredentials()
         ));
 
@@ -81,6 +81,8 @@ public class Program
         #endregion
 
         var app = builder.Build();
+
+        app.UseCors(_originPolicy);
 
         app.UseAuthentication();
         app.UseAuthorization();
