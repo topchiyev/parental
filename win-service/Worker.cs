@@ -12,7 +12,7 @@ namespace Parental.WinService;
 
 public class Worker : BackgroundService
 {
-    private const string RegistryPath = @"HKEY_CURRENT_USER\Software\Parental\DeviceId";
+    private const string RegistryPath = @"HKEY_CURRENT_USER\Software\Parental";
     private readonly ILogger<Worker> _logger;
 
     public Worker(ILogger<Worker> logger)

@@ -12,6 +12,9 @@ popd
 set /p SERVER_ADDRESS=What is the server address?
 set /p DEVICE_ID=What is the device ID?
 
+reg add "HKEY_CURRENT_USER\Software\Parental" /v "ServerAddress" /t REG_SZ /d "%SERVER_ADDRESS%" /f
+reg add "HKEY_CURRENT_USER\Software\Parental" /v "DeviceID" /t REG_SZ /d "%DEVICE_ID%" /f
+
 sc.exe stop "Parental"
 sc.exe delete "Parental"
 sc.exe create "Parental" binpath="%BIN_PATH%" start=auto
