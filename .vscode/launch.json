@@ -16,6 +16,15 @@
       "request": "launch",
       "url": "http://localhost:4200",
       "webRoot": "${workspaceFolder}/frontend"
-    }
+    },
+    {
+      "name": "WinService",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build WinService",
+      "program": "${workspaceFolder}/win-service/bin/Debug/net8.0/win-service.dll",
+      "cwd": "${workspaceFolder}/win-service",
+      "stopAtEntry": false,
+    },
   ]
 }
