@@ -72,9 +72,9 @@ public static class SessionUserHelper
 
     private static bool? TryIsSessionUserAdministrator(int sessionId)
     {
-        if (!LockWorkStation())
+        if (!OperatingSystem.IsWindows())
         {
-            throw new Win32Exception(Marshal.GetLastWin32Error(), "LockWorkStation failed");
+            throw new PlatformNotSupportedException("SessionUserHelper is only supported on Windows.");
         }
 
         IntPtr userToken = IntPtr.Zero;
@@ -142,10 +142,24 @@ public static class SessionUserHelper
 
     public static void LockSession()
     {
-        if (!LockWorkStation())
+        var success = false;
+        try
         {
-            throw new Win32Exception(Marshal.GetLastWin32Error(), "LockWorkStation failed");
+            success = LockWorkStation();
         }
+        catch { }
+
+        if (success)
+            return;
+
+        try {
+            int sessionId = WTSGetActiveConsoleSessionId();
+            if (sessionId == -1)
+                return;
+
+            WTSLogoffSession(IntPtr.Zero, sessionId, false);
+        }
+        catch { }
     }
 
     // ---------- P/Invoke ----------
@@ -178,6 +192,9 @@ public static class SessionUserHelper
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern bool LockWorkStation();
+
+    [DllImport("Wtsapi32.dll", SetLastError = true)]
+    private static extern bool WTSLogoffSession(IntPtr hServer, int sessionId, bool bWait);
 
     private enum WTS_INFO_CLASS
     {
