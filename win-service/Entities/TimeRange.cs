@@ -1,18 +1,25 @@
+using System;
+
 namespace Parental.WinService.Models.Entity;
 
 public class TimeRange
 {
     public long StartTime { get; set; }
     public long EndTime { get; set; }
+    public bool IsEnabled { get; set; }
     
-    public bool Includes(long time)
+    public bool Includes(long date)
     {
-        time %= 24 * 3600;
-        var startTime = StartTime % (24 * 3600);
-        var endTime = EndTime % (24 * 3600);
-        if (startTime > endTime)
+        if (!IsEnabled)
             return false;
-        
-        return time >= startTime && time <= endTime;
+
+        if (StartTime > EndTime)
+            return false;
+
+        var localDate = DateTimeOffset.FromUnixTimeSeconds(date).ToLocalTime().ToUnixTimeMilliseconds();
+        var time = localDate % (24 * 3600);
+        var includes = time >= StartTime && time <= EndTime;
+
+        return includes;
     }
 }
