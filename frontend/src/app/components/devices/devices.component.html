@@ -18,7 +18,7 @@
 
   <div class="card-body">
     <div class="d-flex flex-wrap">
-      <div class="card" style="min-width: 400px;" *ngFor="let device of devices">
+      <div class="card" style="min-width: 250px;" *ngFor="let device of devices">
         <div class="card-header">
           <div class="d-flex">
             <b class="flex-fill">{{ device.name }}</b>
@@ -29,10 +29,10 @@
           </div>
         </div>
         <div class="card-body">
-          <p><b>ID:</b> {{ device.id }}</p>
-          <p *ngIf="connection?.roleType == UserRoleType.ADMIN"><b>User:</b> {{ device.username }}</p>
-          <p><b>Hard Locked:</b> {{ device.isManuallyLocked ? 'Yes' : 'No' }}</p>
-          <p><b>Last Handshake:</b> {{ formatDateTime(device.lastHandshakeOn) }}</p>
+          <div class="d-flex"><b class="me-1">ID:</b> <div class="text-wrap">{{ device.id }}</div></div>
+          <div *ngIf="connection?.roleType == UserRoleType.ADMIN" class="d-flex"><b class="me-1">User:</b> <div class="text-wrap">{{ device.username }}</div></div>
+          <div class="d-flex"><b class="me-1">Hard Locked:</b> <div class="text-wrap">{{ device.isManuallyLocked ? 'Yes' : 'No' }}</div></div>
+          <div class="d-flex"><b class="me-1">Last Handshake:</b> <div class="text-wrap">{{ formatDateTime(device.lastHandshakeOn) }}</div></div>
         </div>
       </div>
       <h4 class="text-info" *ngIf="devices.length == 0">No devices found</h4>
@@ -84,22 +84,28 @@
       <table class="table table-stripped">
         <thead>
           <tr>
-            <th>From</th>
-            <th>To</th>
-            <th></th>
+            <th>
+              <div class="d-flex flex-row">
+              <div class="flex-fill text-center">From</div>
+              <div class="flex-fill text-center">To</div>
+              </div>
+            </th>
           </tr>
         </thead>
         <tbody>
           <tr *ngFor="let range of currentDevice.lockedRanges">
             <td>
-              <app-time-field [(time)]="range.startTime"></app-time-field>
-            </td>
-            <td>
-              <app-time-field [(time)]="range.endTime"></app-time-field>
-            </td>
-            <td class="text-end">
-              <button class="btn btn-sm btn-outline-secondary ms-1" (click)="toggleLockedRange(range)" [ngClass]="{'active': range.isEnabled}">{{ range.isEnabled ? 'Disable' : 'Enable' }}</button>
-              <button class="btn btn-sm btn-danger ms-1" (click)="deleteLockedRange(range)">Delete</button>
+              <div class="d-flex flex-column">
+                <div class="d-flex flex-row">
+                  <app-time-field class="flex-fill me-1" [(time)]="range.startTime"></app-time-field>
+                  <app-time-field class="flex-fill" [(time)]="range.endTime"></app-time-field>
+                </div>
+                <div class="d-flex flex-row justify-content-end mt-1">
+                  <button class="btn btn-sm btn-outline-secondary me-1" (click)="toggleLockedRange(range)"
+                    [ngClass]="{'active': range.isEnabled}">{{ range.isEnabled ? 'Disable' : 'Enable' }}</button>
+                  <button class="btn btn-sm btn-danger" (click)="deleteLockedRange(range)">Delete</button>
+                </div>
+              </div>
             </td>
           </tr>
           <tr *ngIf="currentDevice.lockedRanges.length == 0">

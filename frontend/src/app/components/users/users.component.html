@@ -19,7 +19,7 @@
   <div class="card-body">
 
     <div class="d-flex flex-wrap">
-      <div class="card" style="min-width: 400px;" *ngFor="let user of users">
+      <div class="card" style="min-width: 250px;" *ngFor="let user of users">
         <div class="card-header">
           <div class="d-flex">
             <b class="flex-fill">{{ user.username }}</b>
@@ -30,7 +30,7 @@
           </div>
         </div>
         <div class="card-body">
-          <p><b>Role:</b> {{ UserRoleType[user.roleType] }}</p>
+          <div class="d-flex"><b class="me-1">Role:</b> <div class="text-wrap">{{ UserRoleType[user.roleType] }}</div></div>
         </div>
       </div>
       <h4 class="text-info" *ngIf="users.length == 0">No users found</h4>
