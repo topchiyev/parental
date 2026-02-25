@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: parental-frontend-deployment
+  namespace: parental
+spec:
+  selector:
+    matchLabels:
+      app: parental
+      side: frontend
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: parental
+        side: frontend
+    spec:
+      nodeSelector:
+        node-role.kubernetes.io/worker: "true"
+      containers:
+        - image: smartscoringcr.azurecr.io/parental-frontend:latest
+          name: parental-frontend
+          ports:
+          - containerPort: 8080
+          imagePullPolicy: Always
+          resources:
+            requests:
+              cpu: 10m
+              memory: 30Mi
+            limits:
+              cpu: 20m
+              memory: 60Mi

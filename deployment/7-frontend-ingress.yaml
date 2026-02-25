@@ -1,0 +1,22 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: parental-frontend-ingress
+  namespace: parental
+  annotations:
+    nginx.ingress.kubernetes.io/force-ssl-redirect: 'true'
+    nginx.ingress.kubernetes.io/use-regex: 'true'
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: k3s.smartscoring.com
+    http:
+      paths:
+      - path: /parental(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: parental-frontend-service
+            port:
+              number: 8080

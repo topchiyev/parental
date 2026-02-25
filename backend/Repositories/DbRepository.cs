@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using Parental.Backend.Models;
 
@@ -10,6 +11,7 @@ namespace Parental.Backend.Repositories;
 
 public class DbRepository
 {
+    private static IConfiguration _configuration;
     private static string _dbPath = string.Empty;
     private static string DbPath
     {
@@ -17,8 +19,14 @@ public class DbRepository
         {
             if (string.IsNullOrEmpty(_dbPath))
             {
-                var assembly = Assembly.GetExecutingAssembly();;
-                string dirPath = Path.GetDirectoryName(assembly.Location);
+                var dirPath = _configuration["DataDir"];
+
+                if (string.IsNullOrEmpty(dirPath))
+                {
+                    var assembly = Assembly.GetExecutingAssembly();;
+                    dirPath = Path.GetDirectoryName(assembly.Location);
+                }
+                
                 _dbPath = Path.Combine(dirPath, "db-state.json");
             }
 
@@ -34,8 +42,10 @@ public class DbRepository
     private bool _shouldStop = false;
     private Task _saveTask = null;
 
-    public DbRepository()
+    public DbRepository(IConfiguration configuration)
     {
+        _configuration = configuration;
+
         LoadState();
         StartSaveStateLoop();
     }

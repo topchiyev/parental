@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: parental-backend-deployment
+  namespace: parental
+spec:
+  selector:
+    matchLabels:
+      app: parental
+      side: backend
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: parental
+        side: backend
+    spec:
+      nodeSelector:
+        node-role.kubernetes.io/worker: "true"
+      volumes:
+      - name: storage-volume
+        persistentVolumeClaim:
+          claimName: parental-storage-volume-claim
+      containers:
+        - image: smartscoringcr.azurecr.io/parental-backend:latest
+          name: parental-backend
+          ports:
+          - containerPort: 65000
+          imagePullPolicy: Always
+          resources:
+            requests:
+              cpu: 60m
+              memory: 60Mi
+            limits:
+              cpu: 120m
+              memory: 120Mi
+          volumeMounts:
+          - name: storage-volume
+            mountPath: /app/data

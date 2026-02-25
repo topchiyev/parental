@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: parental-frontend-service
+  namespace: parental
+  labels:
+    app: parental
+    side: frontend
+spec:
+  type: ClusterIP
+  selector:
+    app: parental
+    side: frontend
+  ports:
+    - name: http
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
