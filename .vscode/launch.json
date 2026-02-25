@@ -22,7 +22,7 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "build WinService",
-      "program": "${workspaceFolder}/win-service/bin/Debug/net8.0/win-service.dll",
+      "program": "${workspaceFolder}/win-service/bin/Debug/net8.0/parental.dll",
       "cwd": "${workspaceFolder}/win-service",
       "stopAtEntry": false,
     },

@@ -1,15 +1,4 @@
 # install.ps1
-# Parental Windows Service Installer / Configurator
-#
-# Usage:
-#   .\install.ps1 -ServerAddress "http://10.211.55.2:5000" -DeviceId "f4bbec6f-db45-4418-982e-f5b2175ac8cd"
-#   .\install.ps1 -Help
-#
-# Notes:
-# - Stores config in HKLM:\Software\Parental (recommended for Windows services)
-# - Self-elevates to Administrator if needed
-# - Writes a log to $env:TEMP\parental-install.log
-
 [CmdletBinding()]
 param(
     [Alias('a')]
@@ -26,11 +15,24 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $Script:LogFile = Join-Path $env:TEMP 'parental-install.log'
+$Script:ServiceName = 'Parental'
 
 function Write-Log {
     param([string]$Message)
     $line = "[{0}] {1}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss.fff'), $Message
     Add-Content -Path $Script:LogFile -Value $line
+}
+
+function Wait-IfInteractive {
+    try {
+        if ($Host.Name -match 'ConsoleHost') {
+            Write-Host ""
+            Write-Host "Press any key to continue..."
+            $null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
+        }
+    } catch {
+        # ignore if host doesn't support ReadKey
+    }
 }
 
 function Show-Help {
@@ -39,19 +41,16 @@ function Show-Help {
 Parental Service Installer
 
 Usage:
-  .\$scriptName -ServerAddress <serverAddress> -DeviceId <deviceId>
   .\$scriptName -a <serverAddress> -d <deviceId>
   .\$scriptName -Help
 
-Parameters:
-  -ServerAddress, -a   Server address (example: http://10.211.55.2:5000)
-  -DeviceId, -d        Device ID (example: f4bbec6f-db45-4418-982e-f5b2175ac8cd)
-  -Help, -h            Show this help
+Example:
+  .\$scriptName -a "http://10.211.55.2:5000" -d "f4bbec6f-db45-4418-982e-f5b2175ac8cd"
 
 Notes:
-  - Requires administrator rights (will prompt for elevation)
+  - Requires Administrator rights (will prompt for elevation)
   - Writes config to HKLM:\Software\Parental
-  - Service name: Parental
+  - Service name: $Script:ServiceName
 
 Log file:
   $Script:LogFile
@@ -60,14 +59,14 @@ Log file:
 
 function Test-IsAdministrator {
     $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
-    $principal = New-Object Security.Principal.WindowsPrincipal($identity)
+    $principal = [Security.Principal.WindowsPrincipal]::new($identity)
     return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
-function Ensure-Elevated {
+function Assert-Elevated {
     param(
-        [string]$ServerAddress,
-        [string]$DeviceId
+        [Parameter(Mandatory)][string]$ServerAddress,
+        [Parameter(Mandatory)][string]$DeviceId
     )
 
     if (Test-IsAdministrator) {
@@ -81,7 +80,6 @@ function Ensure-Elevated {
         throw "Cannot self-elevate because PSCommandPath is empty. Save script to a .ps1 file and run it."
     }
 
-    # Rebuild argument list safely
     $argList = @(
         '-NoProfile'
         '-ExecutionPolicy', 'Bypass'
@@ -91,24 +89,20 @@ function Ensure-Elevated {
     )
 
     $p = Start-Process -FilePath 'powershell.exe' -Verb RunAs -ArgumentList $argList -PassThru
-    Write-Log ("Started elevated PowerShell process PID={0}. Exiting current process." -f $p.Id)
+    Write-Log ("Started elevated PowerShell process PID={0}. Exiting non-elevated process." -f $p.Id)
     exit 0
 }
 
 function Get-ServiceBinaryPath {
-    # Expected layout:
-    #   ...\win-service\scripts\install.ps1
-    #   ...\win-service\publish\parental.exe
     $scriptDir = Split-Path -Parent $PSCommandPath
     $binPath = Join-Path $scriptDir '..\publish\parental.exe'
-    $resolved = [System.IO.Path]::GetFullPath($binPath)
-    return $resolved
+    return [System.IO.Path]::GetFullPath($binPath)
 }
 
-function Ensure-RegistryConfig {
+function Set-RegistryConfig {
     param(
-        [Parameter(Mandatory=$true)][string]$ServerAddress,
-        [Parameter(Mandatory=$true)][string]$DeviceId
+        [Parameter(Mandatory)][string]$ServerAddress,
+        [Parameter(Mandatory)][string]$DeviceId
     )
 
     $regPath = 'HKLM:\Software\Parental'
@@ -121,35 +115,56 @@ function Ensure-RegistryConfig {
     New-ItemProperty -Path $regPath -Name 'ServerAddress' -PropertyType String -Value $ServerAddress -Force | Out-Null
     New-ItemProperty -Path $regPath -Name 'DeviceID' -PropertyType String -Value $DeviceId -Force | Out-Null
 
-    # Verify (helps debugging)
     $serverValue = (Get-ItemProperty -Path $regPath -Name 'ServerAddress').ServerAddress
     $deviceValue = (Get-ItemProperty -Path $regPath -Name 'DeviceID').DeviceID
     Write-Log "Registry verification: ServerAddress=$serverValue ; DeviceID=$deviceValue"
 }
 
-function Invoke-Sc {
+function Remove-ServiceIfExists {
+    param([Parameter(Mandatory)][string]$Name)
+
+    $svc = Get-Service -Name $Name -ErrorAction SilentlyContinue
+    if (-not $svc) {
+        Write-Log "Service '$Name' does not exist. Nothing to remove."
+        return
+    }
+
+    Write-Log "Service '$Name' exists. Status=$($svc.Status). Removing."
+    if ($svc.Status -ne 'Stopped') {
+        try {
+            Stop-Service -Name $Name -Force -ErrorAction Stop
+            Write-Log "Stopped service '$Name'."
+        } catch {
+            Write-Log "Stop-Service failed: $($_.Exception.Message)"
+        }
+    }
+
+    # Use sc.exe delete for deletion because Remove-Service is not available in Windows PowerShell 5.1
+    $deleteOutput = & sc.exe delete $Name 2>&1
+    $deleteCode = $LASTEXITCODE
+    if ($deleteOutput) { $deleteOutput | ForEach-Object { Write-Log "sc delete: $_" } }
+    Write-Log "sc delete exit code: $deleteCode"
+
+    # Give SCM a moment
+    Start-Sleep -Seconds 1
+}
+
+function Install-Service {
     param(
-        [Parameter(Mandatory=$true)][string[]]$Arguments,
-        [switch]$IgnoreErrors
+        [Parameter(Mandatory)][string]$Name,
+        [Parameter(Mandatory)][string]$BinaryPath
     )
 
-    Write-Log ("sc.exe " + ($Arguments -join ' '))
-    $output = & sc.exe @Arguments 2>&1
-    $exitCode = $LASTEXITCODE
+    Write-Log "Creating service '$Name' with binary '$BinaryPath'"
 
-    if ($output) {
-        $output | ForEach-Object { Write-Log "  $_" }
-    }
-    Write-Log "sc.exe exit code: $exitCode"
+    # New-Service is much more reliable than sc.exe create from PowerShell
+    New-Service -Name $Name `
+                -BinaryPathName ('"{0}"' -f $BinaryPath) `
+                -DisplayName $Name `
+                -StartupType Automatic `
+                -Description 'Parental control agent service'
 
-    if (-not $IgnoreErrors -and $exitCode -ne 0) {
-        throw "sc.exe failed with exit code $exitCode. Args: $($Arguments -join ' ')"
-    }
-
-    return [pscustomobject]@{
-        ExitCode = $exitCode
-        Output   = $output
-    }
+    Write-Log "New-Service created successfully."
 }
 
 try {
@@ -159,6 +174,7 @@ try {
 
     if ($Help) {
         Show-Help
+        Wait-IfInteractive
         exit 0
     }
 
@@ -169,7 +185,7 @@ try {
         throw "Missing required parameter: -DeviceId (or -d). Use -Help for usage."
     }
 
-    Ensure-Elevated -ServerAddress $ServerAddress -DeviceId $DeviceId
+    Assert-Elevated -ServerAddress $ServerAddress -DeviceId $DeviceId
 
     Write-Log "Running elevated installer."
     Write-Log "ServerAddress=$ServerAddress"
@@ -189,31 +205,23 @@ try {
     Write-Host "  Binary:        $binPath"
     Write-Host ""
 
-    Ensure-RegistryConfig -ServerAddress $ServerAddress -DeviceId $DeviceId
+    Set-RegistryConfig -ServerAddress $ServerAddress -DeviceId $DeviceId
 
-    # Stop and delete existing service if present (ignore errors)
-    Invoke-Sc -Arguments @('stop', 'Parental') -IgnoreErrors | Out-Null
-    Start-Sleep -Milliseconds 500
-    Invoke-Sc -Arguments @('delete', 'Parental') -IgnoreErrors | Out-Null
-    Start-Sleep -Milliseconds 500
+    Remove-ServiceIfExists -Name $Script:ServiceName
+    Install-Service -Name $Script:ServiceName -BinaryPath $binPath
 
-    # Create service
-    # sc.exe requires a very particular syntax for parameters with spaces:
-    #   binPath= "<path>"
-    #   start= auto
-    # We pass each as a single argument string.
-    Invoke-Sc -Arguments @(
-        'create', 'Parental',
-        "binPath= `"$binPath`"",
-        'start= auto'
-    ) | Out-Null
+    Write-Log "Starting service '$Script:ServiceName'"
+    Start-Service -Name $Script:ServiceName -ErrorAction Stop
 
-    # Start service
-    Invoke-Sc -Arguments @('start', 'Parental') | Out-Null
+    # Verify status
+    $svc = Get-Service -Name $Script:ServiceName -ErrorAction Stop
+    Write-Log "Service '$Script:ServiceName' status after start: $($svc.Status)"
 
-    Write-Log "Install completed successfully."
-    Write-Host "Done."
+    Write-Host "Done. Service '$Script:ServiceName' status: $($svc.Status)" -ForegroundColor Green
     Write-Host "Log file: $Script:LogFile"
+    Write-Log "Install completed successfully."
+
+    Wait-IfInteractive
     exit 0
 }
 catch {
@@ -222,5 +230,12 @@ catch {
     Write-Host ""
     Write-Host "ERROR: $msg" -ForegroundColor Red
     Write-Host "Log file: $Script:LogFile"
+
+    # Try to surface deeper info if present
+    if ($_.InvocationInfo) {
+        Write-Log ("At: {0}" -f $_.InvocationInfo.PositionMessage)
+    }
+
+    Wait-IfInteractive
     exit 1
 }
