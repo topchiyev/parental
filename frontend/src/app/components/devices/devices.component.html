@@ -105,7 +105,7 @@
               <app-time-field [(time)]="range.endTime"></app-time-field>
             </td>
             <td class="text-end">
-              <button class="btn btn-sm btn-danger ms-1">Delete</button>
+              <button class="btn btn-sm btn-danger ms-1" (click)="deleteLockedRange(range)">Delete</button>
             </td>
           </tr>
           <tr *ngIf="currentDevice.lockedRanges.length == 0">

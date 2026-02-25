@@ -9,6 +9,7 @@ import { DevicesService } from 'src/app/services/devices.service';
 import { UserRoleType } from 'src/app/models/enum/UserRoleType';
 import { User } from 'src/app/models/entity/User';
 import { UsersService } from 'src/app/services/users.service';
+import { TimeRange } from 'src/app/models/entity/TimeRange';
 
 @Component({
   selector: 'app-devices',
@@ -127,6 +128,13 @@ export class DevicesComponent {
       return;
 
     this.currentDevice.lockedRanges.push({ startTime: 0, endTime: 0 });
+  }
+
+  deleteLockedRange(range: TimeRange) {
+    if (!this.currentDevice)
+      return;
+
+    this.currentDevice.lockedRanges = this.currentDevice.lockedRanges.filter(t => t !== range);
   }
 
   formatDateTime(timestamp: number): string {
