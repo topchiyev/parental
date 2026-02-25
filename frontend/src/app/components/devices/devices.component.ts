@@ -127,7 +127,11 @@ export class DevicesComponent {
     if (!this.currentDevice)
       return;
 
-    this.currentDevice.lockedRanges.push({ startTime: 0, endTime: 0 });
+    this.currentDevice.lockedRanges.push({ startTime: 0, endTime: 0, isEnabled: true });
+  }
+
+  toggleLockedRange(range: TimeRange) {
+    range.isEnabled = !range.isEnabled;
   }
 
   deleteLockedRange(range: TimeRange) {
@@ -143,7 +147,6 @@ export class DevicesComponent {
     }
     const date = new Date(timestamp * 1000);
     let value: string;
-    // dd-MM-yyyy HH:mm
     value = date.getDate().toString().padStart(2, '0') + '-';
     value += (date.getMonth() + 1).toString().padStart(2, '0') + '-';
     value += date.getFullYear() + ' ';
