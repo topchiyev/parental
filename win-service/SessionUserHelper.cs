@@ -52,7 +52,7 @@ public static class SessionUserHelper
         bool? isAdmin = null;
         try
         {
-            isAdmin = IsSessionUserAdministrator(sessionId);
+            isAdmin = TryIsSessionUserAdministrator(sessionId);
         }
         catch
         {
@@ -70,11 +70,11 @@ public static class SessionUserHelper
         };
     }
 
-    private static bool IsSessionUserAdministrator(int sessionId)
+    private static bool? TryIsSessionUserAdministrator(int sessionId)
     {
-        if (!OperatingSystem.IsWindows())
+        if (!LockWorkStation())
         {
-            throw new PlatformNotSupportedException("SessionUserHelper is only supported on Windows.");
+            throw new Win32Exception(Marshal.GetLastWin32Error(), "LockWorkStation failed");
         }
 
         IntPtr userToken = IntPtr.Zero;
@@ -83,18 +83,21 @@ public static class SessionUserHelper
         try
         {
             if (!WTSQueryUserToken((uint)sessionId, out userToken))
-                throw new Win32Exception(Marshal.GetLastWin32Error(), "WTSQueryUserToken failed");
+            {
+                int err = Marshal.GetLastWin32Error();
+                Console.Error.WriteLine($"WTSQueryUserToken failed. sessionId={sessionId}, error={err}");
+                return null; // unknown (not false)
+            }
 
-            // Duplicate to an impersonation token usable by WindowsIdentity in all cases
             if (!DuplicateToken(userToken, SECURITY_IMPERSONATION_LEVEL.SecurityImpersonation, out duplicatedToken))
-                throw new Win32Exception(Marshal.GetLastWin32Error(), "DuplicateToken failed");
+            {
+                int err = Marshal.GetLastWin32Error();
+                Console.Error.WriteLine($"DuplicateToken failed. error={err}");
+                return null;
+            }
 
             using var identity = new WindowsIdentity(duplicatedToken);
             var principal = new WindowsPrincipal(identity);
-
-            // Checks membership in BUILTIN\Administrators.
-            // Note: With UAC, an admin user may run with a filtered token interactively,
-            // but this usually answers "is the account in admin group" for the queried token.
             return principal.IsInRole(WindowsBuiltInRole.Administrator);
         }
         finally

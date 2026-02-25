@@ -60,7 +60,7 @@ public class Worker : BackgroundService
                 if (device != null && device.IsLocked())
                 {
                     var sessionInfo = SessionUserHelper.GetActiveConsoleUserInfo();
-                    if (sessionInfo.IsLoggedIn && sessionInfo.IsAdministrator == false)
+                    if (sessionInfo.IsLoggedIn)
                     {
                         SessionUserHelper.LockSession();
                     }
