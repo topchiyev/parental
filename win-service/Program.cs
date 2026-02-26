@@ -51,7 +51,6 @@ public static class Program
         });
 
         var logger = loggerFactory.CreateLogger("wsprnsvc");
-        logger.LogInformation("Example log message");
 
         builder.Services.AddHostedService<Worker>();
 
