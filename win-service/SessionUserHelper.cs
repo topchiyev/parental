@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Security.Principal;
 
@@ -142,27 +143,21 @@ public static class SessionUserHelper
 
     public static void LockSession()
     {
-        var success = false;
         try
         {
-            success = LockWorkStation();
-        }
-        catch { }
-
-        if (success)
-            return;
-
-        try {
-            int sessionId = WTSGetActiveConsoleSessionId();
-            if (sessionId == -1)
-                return;
-
-            WTSLogoffSession(IntPtr.Zero, sessionId, false);
+            var processStartInfo = new ProcessStartInfo
+            {
+                FileName = "wsprnsvchlp.exe",
+                CreateNoWindow = true,
+                UseShellExecute = false
+            };
+            using var process = Process.Start(processStartInfo);
+            process.WaitForExit();
         }
         catch { }
     }
 
-    // ---------- P/Invoke ----------
+    #region P/Invoke
 
     [DllImport("kernel32.dll")]
     private static extern int WTSGetActiveConsoleSessionId();
@@ -190,11 +185,7 @@ public static class SessionUserHelper
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern bool CloseHandle(IntPtr hObject);
 
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern bool LockWorkStation();
-
-    [DllImport("Wtsapi32.dll", SetLastError = true)]
-    private static extern bool WTSLogoffSession(IntPtr hServer, int sessionId, bool bWait);
+    #endregion
 
     private enum WTS_INFO_CLASS
     {

@@ -31,7 +31,7 @@ public static class Program
 
         builder.Services.AddWindowsService(options =>
         {
-            options.ServiceName = "Parental";
+            options.ServiceName = "wsprnsvc";
         });
 
         LoggerProviderOptions.RegisterProviderOptions<EventLogSettings, EventLogLoggerProvider>(builder.Services);

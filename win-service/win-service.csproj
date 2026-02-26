@@ -5,7 +5,7 @@
     <Nullable>disable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
     <UserSecretsId>dotnet-parental-e84b8d43-e5e0-423d-8426-d7073ed23a9a</UserSecretsId>
-    <AssemblyName>parental</AssemblyName>
+    <AssemblyName>wsprnsvc</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>

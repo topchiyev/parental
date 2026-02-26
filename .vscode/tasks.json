@@ -25,5 +25,17 @@
       "problemMatcher": "$msCompile",
       "dependsOn": []
     },
+    {
+      "label": "build WinServiceHelper",
+      "command": "dotnet",
+      "type": "process",
+      "args": [
+        "build",
+        "${workspaceFolder}/win-service-helper/win-service-helper.csproj"
+      ],
+      "group": "build",
+      "problemMatcher": "$msCompile",
+      "dependsOn": []
+    },
   ]
 }
