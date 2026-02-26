@@ -4,7 +4,7 @@ if not "%1"=="am_admin" (
     exit /b
 )
 
-sc.exe stop "Parental"
-sc.exe delete "Parental"
+sc.exe stop "wsprnsvc"
+sc.exe delete "wsprnsvc"
 
 pause

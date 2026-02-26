@@ -1,8 +1,8 @@
 using System;
-using System.ComponentModel;
 using System.Diagnostics;
+using System.IO;
 using System.Runtime.InteropServices;
-using System.Security.Principal;
+using Microsoft.Extensions.Logging;
 
 namespace Parental.WinService;
 
@@ -14,14 +14,14 @@ public static class SessionUserHelper
         public int SessionId { get; init; } = -1;
         public string UserName { get; init; }
         public string Domain { get; init; }
-        public bool? IsAdministrator { get; init; } // null if unknown
     }
 
-    public static ActiveUserInfo GetActiveConsoleUserInfo()
+    public static ActiveUserInfo GetActiveConsoleUserInfo(ILogger logger)
     {
         if (!OperatingSystem.IsWindows())
         {
-            throw new PlatformNotSupportedException("SessionUserHelper is only supported on Windows.");
+            logger.LogError("GetActiveConsoleUserInfo is only supported on Windows.");
+            return null;
         }
 
         int sessionId = WTSGetActiveConsoleSessionId();
@@ -30,13 +30,12 @@ public static class SessionUserHelper
             return new ActiveUserInfo
             {
                 IsLoggedIn = false,
-                SessionId = -1,
-                IsAdministrator = null
+                SessionId = -1
             };
         }
 
-        string user = QuerySessionString(sessionId, WTS_INFO_CLASS.WTSUserName);
-        string domain = QuerySessionString(sessionId, WTS_INFO_CLASS.WTSDomainName);
+        string user = QuerySessionString(sessionId, WTS_INFO_CLASS.WTSUserName, logger);
+        string domain = QuerySessionString(sessionId, WTS_INFO_CLASS.WTSDomainName, logger);
 
         if (string.IsNullOrWhiteSpace(user))
         {
@@ -46,19 +45,7 @@ public static class SessionUserHelper
                 SessionId = sessionId,
                 UserName = null,
                 Domain = null,
-                IsAdministrator = null
             };
-        }
-
-        bool? isAdmin = null;
-        try
-        {
-            isAdmin = TryIsSessionUserAdministrator(sessionId);
-        }
-        catch
-        {
-            // Keep null if token query fails; don't crash your service loop.
-            isAdmin = null;
         }
 
         return new ActiveUserInfo
@@ -66,53 +53,16 @@ public static class SessionUserHelper
             IsLoggedIn = true,
             SessionId = sessionId,
             UserName = user,
-            Domain = domain,
-            IsAdministrator = isAdmin
+            Domain = domain
         };
     }
 
-    private static bool? TryIsSessionUserAdministrator(int sessionId)
+    private static string QuerySessionString(int sessionId, WTS_INFO_CLASS infoClass, ILogger logger)
     {
         if (!OperatingSystem.IsWindows())
         {
-            throw new PlatformNotSupportedException("SessionUserHelper is only supported on Windows.");
-        }
-
-        IntPtr userToken = IntPtr.Zero;
-        IntPtr duplicatedToken = IntPtr.Zero;
-
-        try
-        {
-            if (!WTSQueryUserToken((uint)sessionId, out userToken))
-            {
-                int err = Marshal.GetLastWin32Error();
-                Console.Error.WriteLine($"WTSQueryUserToken failed. sessionId={sessionId}, error={err}");
-                return null; // unknown (not false)
-            }
-
-            if (!DuplicateToken(userToken, SECURITY_IMPERSONATION_LEVEL.SecurityImpersonation, out duplicatedToken))
-            {
-                int err = Marshal.GetLastWin32Error();
-                Console.Error.WriteLine($"DuplicateToken failed. error={err}");
-                return null;
-            }
-
-            using var identity = new WindowsIdentity(duplicatedToken);
-            var principal = new WindowsPrincipal(identity);
-            return principal.IsInRole(WindowsBuiltInRole.Administrator);
-        }
-        finally
-        {
-            if (duplicatedToken != IntPtr.Zero) CloseHandle(duplicatedToken);
-            if (userToken != IntPtr.Zero) CloseHandle(userToken);
-        }
-    }
-
-    private static string QuerySessionString(int sessionId, WTS_INFO_CLASS infoClass)
-    {
-        if (!OperatingSystem.IsWindows())
-        {
-            throw new PlatformNotSupportedException("SessionUserHelper is only supported on Windows.");
+            logger.LogError("QuerySessionString is only supported on Windows.");
+            return null;
         }
 
         IntPtr buffer = IntPtr.Zero;
@@ -141,20 +91,40 @@ public static class SessionUserHelper
         }
     }
 
-    public static void LockSession()
+    public static void LockSession(ILogger logger, int sessionId)
     {
+        var fileName = "wsprnsvchlp.exe";
+
+        var path1 = Path.Combine(AppContext.BaseDirectory, fileName);
+        var currentProcessInfo = Process.GetCurrentProcess();
+        var path2 = currentProcessInfo.MainModule?.FileName;
+        path2 = Path.GetDirectoryName(path2);
+        path2 = Path.Combine(path2, fileName);
+
+        string path;
+
+        if (File.Exists(path1))
+        {
+            path = path1;
+        }
+        else if (File.Exists(path2))
+        {
+            path = path2;
+        }
+        else
+        {
+            logger.LogError($"LockSession failed: helper executable not found at '{path1}' or '{path2}'.");
+            return;
+        }
+        
         try
         {
-            var processStartInfo = new ProcessStartInfo
-            {
-                FileName = "wsprnsvchlp.exe",
-                CreateNoWindow = true,
-                UseShellExecute = false
-            };
-            using var process = Process.Start(processStartInfo);
-            process.WaitForExit();
+            ProcessHelper.CreateProcessAsUser(path, string.Empty, logger, sessionId);
         }
-        catch { }
+        catch (Exception ex)
+        {
+            logger.LogError($"Failed to lock session: {ex}");
+        }
     }
 
     #region P/Invoke

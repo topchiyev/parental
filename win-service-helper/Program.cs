@@ -12,6 +12,8 @@ public static class Program
             Console.WriteLine("This application is designed to run on Windows.");
             return;
         }
+
+        LockWorkStation();
     }
 
     [DllImport("user32.dll", SetLastError = true)]

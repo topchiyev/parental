@@ -12,4 +12,12 @@
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.12" />
     <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="9.0.12" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\win-service-helper\publish\wsprnsvchlp.exe">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+    </Content>
+  </ItemGroup>
+
 </Project>

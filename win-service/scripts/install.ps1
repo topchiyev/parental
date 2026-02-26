@@ -14,8 +14,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$Script:LogFile = Join-Path $env:TEMP 'parental-install.log'
-$Script:ServiceName = 'Parental'
+$Script:LogFile = Join-Path $env:TEMP 'wsprnsvc-install.log'
+$Script:ServiceName = 'wsprnsvc'
 
 function Write-Log {
     param([string]$Message)
@@ -95,7 +95,7 @@ function Assert-Elevated {
 
 function Get-ServiceBinaryPath {
     $scriptDir = Split-Path -Parent $PSCommandPath
-    $binPath = Join-Path $scriptDir '..\publish\parental.exe'
+    $binPath = Join-Path $scriptDir '..\publish\wsprnsvc.exe'
     return [System.IO.Path]::GetFullPath($binPath)
 }
 
@@ -162,7 +162,7 @@ function Install-Service {
                 -BinaryPathName ('"{0}"' -f $BinaryPath) `
                 -DisplayName $Name `
                 -StartupType Automatic `
-                -Description 'Parental control agent service'
+                -Description 'wsprnsvc'
 
     Write-Log "New-Service created successfully."
 }

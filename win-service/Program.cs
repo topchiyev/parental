@@ -1,9 +1,9 @@
 using System;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging.Configuration;
-using Microsoft.Extensions.Logging.EventLog;
+using Microsoft.Extensions.Logging;
 using System.Security.Principal;
+using System.IO;
 
 namespace Parental.WinService;
 
@@ -34,7 +34,24 @@ public static class Program
             options.ServiceName = "wsprnsvc";
         });
 
-        LoggerProviderOptions.RegisterProviderOptions<EventLogSettings, EventLogLoggerProvider>(builder.Services);
+        using var loggerFactory = LoggerFactory.Create(builder =>
+        {
+            builder.AddConsole();
+            if (OperatingSystem.IsWindows())
+            {
+                builder.AddEventLog(options =>
+                {
+                    if (OperatingSystem.IsWindows())
+                    {
+                        options.LogName = "Application";
+                        options.SourceName = "wsprnsvc";
+                    }
+                });
+            }
+        });
+
+        var logger = loggerFactory.CreateLogger("wsprnsvc");
+        logger.LogInformation("Example log message");
 
         builder.Services.AddHostedService<Worker>();
 
