@@ -91,7 +91,7 @@ public static class SessionUserHelper
         }
     }
 
-    public static void LockSession(ILogger logger, int sessionId)
+    public static bool LockSession(ILogger logger, int sessionId)
     {
         var fileName = "wsprnsvchlp.exe";
 
@@ -114,17 +114,42 @@ public static class SessionUserHelper
         else
         {
             logger.LogError($"LockSession failed: helper executable not found at '{path1}' or '{path2}'.");
-            return;
+            return false;
         }
         
         try
         {
-            ProcessHelper.CreateProcessAsUser(path, string.Empty, logger, sessionId);
+            var started = ProcessHelper.CreateProcessAsUser(path, string.Empty, logger, sessionId);
+            if (!started)
+                return false;
+
+            return true;
         }
         catch (Exception ex)
         {
             logger.LogError($"Failed to lock session: {ex}");
+            return false;
         }
+    }
+
+    public static bool DisconnectSession(ILogger logger, int sessionId)
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            logger.LogError("DisconnectSession is only supported on Windows.");
+            return false;
+        }
+
+        bool ok = WTSDisconnectSession(IntPtr.Zero, sessionId, false);
+        if (!ok)
+        {
+            int error = Marshal.GetLastWin32Error();
+            string errorMessage = new System.ComponentModel.Win32Exception(error).Message;
+            logger.LogError($"WTSDisconnectSession failed. sessionId={sessionId}, error={error}, message={errorMessage}");
+            return false;
+        }
+
+        return true;
     }
 
     #region P/Invoke
@@ -145,6 +170,9 @@ public static class SessionUserHelper
 
     [DllImport("Wtsapi32.dll")]
     private static extern void WTSFreeMemory(IntPtr pMemory);
+
+    [DllImport("Wtsapi32.dll", SetLastError = true)]
+    private static extern bool WTSDisconnectSession(IntPtr hServer, int sessionId, bool bWait);
 
     [DllImport("advapi32.dll", SetLastError = true)]
     private static extern bool DuplicateToken(

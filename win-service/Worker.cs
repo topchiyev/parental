@@ -34,6 +34,8 @@ public class Worker : BackgroundService
 
         using (var client = new HttpClient())
         {
+            bool? lastLockedState = null;
+
             while (!cancellationToken.IsCancellationRequested)
             {
                 try
@@ -57,12 +59,30 @@ public class Worker : BackgroundService
                     _logger.LogError(ex, "An error occurred while sending the heartbeat.");
                 }
 
-                if (device != null && device.IsLocked())
+                var shouldLock = device != null && device.IsLocked();
+                if (!lastLockedState.HasValue || lastLockedState.Value != shouldLock)
+                {
+                    lastLockedState = shouldLock;
+                    _logger.LogInformation("Device lock state changed. ShouldLock={ShouldLock}", shouldLock);
+                }
+
+                if (shouldLock)
                 {
                     var sessionInfo = SessionUserHelper.GetActiveConsoleUserInfo(_logger);
                     if (sessionInfo.IsLoggedIn)
                     {
-                        SessionUserHelper.LockSession(_logger, sessionInfo.SessionId);
+                        var started = SessionUserHelper.LockSession(_logger, sessionInfo.SessionId);
+                        if (!started)
+                        {
+                            _logger.LogWarning("Lock requested but helper could not be started. SessionId={SessionId}", sessionInfo.SessionId);
+                            var disconnected = SessionUserHelper.DisconnectSession(_logger, sessionInfo.SessionId);
+                            if (!disconnected)
+                                _logger.LogWarning("Fallback disconnect also failed. SessionId={SessionId}", sessionInfo.SessionId);
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogInformation("Lock requested but no active interactive user session was found.");
                     }
                 }
 

@@ -13,13 +13,20 @@ public class TimeRange
         if (!IsEnabled)
             return false;
 
-        if (StartTime > EndTime)
+        if (StartTime < 0 || EndTime < 0)
             return false;
 
-        var localDate = DateTimeOffset.FromUnixTimeSeconds(date).ToLocalTime().ToUnixTimeMilliseconds();
-        var time = localDate % (24 * 3600);
-        var includes = time >= StartTime && time <= EndTime;
+        var maxSecondsInDay = 24 * 3600;
+        if (StartTime >= maxSecondsInDay || EndTime >= maxSecondsInDay)
+            return false;
 
-        return includes;
+        var localTime = DateTimeOffset.FromUnixTimeSeconds(date).ToLocalTime().TimeOfDay;
+        var time = (long)localTime.TotalSeconds;
+
+        if (StartTime <= EndTime)
+            return time >= StartTime && time <= EndTime;
+
+        // Allow ranges that span midnight (for example 23:00 -> 02:00).
+        return time >= StartTime || time <= EndTime;
     }
 }

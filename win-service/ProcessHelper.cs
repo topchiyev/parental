@@ -5,12 +5,12 @@ using Microsoft.Extensions.Logging;
 
 public class ProcessHelper
 {
-    public static void CreateProcessAsUser(string filename, string args, ILogger logger, int sessionId)
+    public static bool CreateProcessAsUser(string filename, string args, ILogger logger, int sessionId)
     {
         if (!OperatingSystem.IsWindows())
         {
             logger.LogError("CreateProcessAsUser is only supported on Windows.");
-            return;
+            return false;
         }
 
         if (!WTSQueryUserToken((uint)sessionId, out IntPtr hToken))
@@ -18,7 +18,7 @@ public class ProcessHelper
             int error = Marshal.GetLastWin32Error();
             string errorMessage = new System.ComponentModel.Win32Exception(error).Message;
             logger.LogError($"WTSQueryUserToken failed. error={error}, message={errorMessage}");
-            return;
+            return false;
         }
 
         IntPtr hDupedToken = IntPtr.Zero;
@@ -34,7 +34,7 @@ public class ProcessHelper
                 hToken,
                 GENERIC_ALL_ACCESS,
                 ref sa,
-                (int)SECURITY_IMPERSONATION_LEVEL.SecurityIdentification,
+                (int)SECURITY_IMPERSONATION_LEVEL.SecurityImpersonation,
                 (int)TOKEN_TYPE.TokenPrimary,
                 ref hDupedToken
             );
@@ -44,13 +44,13 @@ public class ProcessHelper
                 int error = Marshal.GetLastWin32Error();
                 string errorMessage = new System.ComponentModel.Win32Exception(error).Message;
                 logger.LogError($"DuplicateTokenEx failed. error={error}, message={errorMessage}");
-                return;
+                return false;
             }
 
 
             STARTUPINFO si = new STARTUPINFO();
             si.cb = Marshal.SizeOf(si);
-            si.lpDesktop = string.Empty;
+            si.lpDesktop = @"winsta0\default";
             si.dwFlags = STARTF_USESHOWWINDOW;
             si.wShowWindow = SW_HIDE;
 
@@ -70,8 +70,46 @@ public class ProcessHelper
                 int error = Marshal.GetLastWin32Error();
                 string errorMessage = new System.ComponentModel.Win32Exception(error).Message;
                 logger.LogError($"CreateProcessAsUser failed. error={error}, message={errorMessage}");
-                return;
+                return false;
             }
+
+            if (pi.hProcess == IntPtr.Zero)
+            {
+                logger.LogError("CreateProcessAsUser returned success but process handle is null.");
+                return false;
+            }
+
+            uint waitResult = WaitForSingleObject(pi.hProcess, HelperExitWaitTimeoutMs);
+            if (waitResult == WAIT_TIMEOUT)
+            {
+                logger.LogWarning("Helper process timed out after {TimeoutMs}ms. Terminating stale instance.", HelperExitWaitTimeoutMs);
+                TerminateProcess(pi.hProcess, 1);
+                return false;
+            }
+
+            if (waitResult == WAIT_FAILED)
+            {
+                int error = Marshal.GetLastWin32Error();
+                string errorMessage = new System.ComponentModel.Win32Exception(error).Message;
+                logger.LogError($"WaitForSingleObject failed. error={error}, message={errorMessage}");
+                return false;
+            }
+
+            if (!GetExitCodeProcess(pi.hProcess, out uint exitCode))
+            {
+                int error = Marshal.GetLastWin32Error();
+                string errorMessage = new System.ComponentModel.Win32Exception(error).Message;
+                logger.LogError($"GetExitCodeProcess failed. error={error}, message={errorMessage}");
+                return false;
+            }
+
+            if (exitCode != 0)
+            {
+                logger.LogWarning("Helper process exited with non-zero code: {ExitCode}", exitCode);
+                return false;
+            }
+
+            return true;
         }
         finally
         {
@@ -81,6 +119,8 @@ public class ProcessHelper
                 CloseHandle(pi.hThread);
             if (hDupedToken != IntPtr.Zero)
                 CloseHandle(hDupedToken);
+            if (hToken != IntPtr.Zero)
+                CloseHandle(hToken);
         }
     }
 
@@ -141,12 +181,24 @@ public class ProcessHelper
     private const int CREATE_NO_WINDOW = 0x08000000;
     private const int STARTF_USESHOWWINDOW = 0x00000001;
     private const int SW_HIDE = 0;
+    private const uint WAIT_TIMEOUT = 0x00000102;
+    private const uint WAIT_FAILED = 0xFFFFFFFF;
+    private const uint HelperExitWaitTimeoutMs = 3000;
 
     [DllImport("kernel32.dll",
         EntryPoint = "CloseHandle", SetLastError = true,
         CharSet = CharSet.Auto, CallingConvention = CallingConvention.StdCall
     )]
     private static extern bool CloseHandle(IntPtr handle);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern uint WaitForSingleObject(IntPtr hHandle, uint dwMilliseconds);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool GetExitCodeProcess(IntPtr hProcess, out uint lpExitCode);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool TerminateProcess(IntPtr hProcess, uint uExitCode);
 
     [DllImport("advapi32.dll",
         EntryPoint = "CreateProcessAsUser", SetLastError = true,
