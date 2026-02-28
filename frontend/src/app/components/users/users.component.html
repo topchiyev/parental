@@ -9,7 +9,12 @@
       <ul class="navbar-nav ms-auto">
         <li class="nav-item">
           <button class="nav-link" type="button" (click)="createUser()">
-            <span><b> Create user</b></span>
+            <span><b>Create user</b></span>
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link" type="button" (click)="load()">
+            <span><b>Refresh</b></span>
           </button>
         </li>
       </ul>
@@ -23,7 +28,7 @@
         <div class="card-header">
           <div class="d-flex">
             <b class="flex-fill">{{ user.username }}</b>
-            <div>
+            <div class="flex-shrink-0">
               <button class="btn btn-sm btn-primary" (click)="editUser(user.username)">Edit</button>
               <button class="btn btn-sm btn-danger ms-1" (click)="deleteUser(user.username)">Delete</button>
             </div>

@@ -39,7 +39,7 @@ export class UsersComponent {
     this.load();
   }
 
-  private async load(): Promise<void> {
+  async load(): Promise<void> {
     while (!this.environmentService.isReady()) {
       await new Promise(resolve => setTimeout(resolve, 100));
     }
