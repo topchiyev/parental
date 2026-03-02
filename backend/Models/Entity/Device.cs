@@ -9,5 +9,7 @@ public class Device: IDbEntity
     public string Name { get; set; }
     public long LastHandshakeOn { get; set; }
     public bool IsManuallyLocked { get; set; }
+    public bool IsLockedWhileDisconnected { get; set; }
+    public List<string> AllowedUsernames { get; set; } = new List<string>();
     public List<TimeRange> LockedRanges { get; set; } = new List<TimeRange>();
 }

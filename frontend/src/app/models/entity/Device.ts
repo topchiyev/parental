@@ -6,5 +6,7 @@ export interface Device {
   name: string;
   lastHandshakeOn: number;
   isManuallyLocked: boolean;
+  isLockedWhileDisconnected: boolean;
+  allowedUsernames: string[];
   lockedRanges: TimeRange[];
 }

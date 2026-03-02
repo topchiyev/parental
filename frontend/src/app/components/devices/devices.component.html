@@ -71,6 +71,17 @@
       </select>
     </div>
     <div class="form-group p-3">
+      <label class="form-label">Locked While Disconnected</label>
+      <div class="input-group">
+        <button type="button" class="form-control form-control-sm btn btn-outline-secondary"
+          [ngClass]="{'active': currentDevice.isLockedWhileDisconnected}"
+          (click)="currentDevice.isLockedWhileDisconnected = !currentDevice.isLockedWhileDisconnected">Yes</button>
+        <button type="button" class="form-control form-control-sm btn btn-outline-secondary"
+          [ngClass]="{'active': !currentDevice.isLockedWhileDisconnected}"
+          (click)="currentDevice.isLockedWhileDisconnected = !currentDevice.isLockedWhileDisconnected">No</button>
+      </div>
+    </div>
+    <div class="form-group p-3">
       <label class="form-label">Hard Locked</label>
       <div class="input-group">
         <button type="button" class="form-control form-control-sm btn btn-outline-secondary"
@@ -85,7 +96,7 @@
       <h5 class="modal-title">Locked Ranges</h5>
     </div>
     <div class="modal-body">
-      <table class="table table-stripped">
+      <table class="table table-sm table-striped mb-0">
         <thead>
           <tr>
             <th>
@@ -118,8 +129,31 @@
         </tbody>
       </table>
     </div>
+    <div class="modal-header">
+      <h5 class="modal-title">Allowed Users</h5>
+    </div>
+    <div class="modal-body">
+      <table class="table table-sm table-striped mb-0">
+        <tbody>
+          <tr *ngFor="let username of currentAllowedUsernames">
+            <td>
+              <div class="d-flex flex-column">
+                <input type="text" class="form-control form-control-sm mb-1" [(ngModel)]="username.username">
+                <div class="d-flex flex-row justify-content-end mt-1">
+                  <button class="btn btn-sm btn-danger" (click)="deleteAllowedUsername(username)">Delete</button>
+                </div>
+              </div>
+            </td>
+          </tr>
+          <tr *ngIf="currentAllowedUsernames.length == 0">
+            <td colspan="3" class="text-info">No items</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
     <div class="modal-footer">
-      <button type="button" (click)="addLockedRange()" class="btn btn-primary">Add Range</button>
+      <button type="button" (click)="addLockedRange()" class="btn btn-primary">Add Locked Range</button>
+      <button type="button" (click)="addAllowedUsername()" class="btn btn-primary">Add Allowed Username</button>
       <button type="button" (click)="submitDeviceEditor()" class="btn btn-primary">Save</button>
       <button type="button" (click)="closeDeviceEditor()" class="btn btn-secondary">Close</button>
     </div>

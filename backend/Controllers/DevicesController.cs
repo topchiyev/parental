@@ -80,7 +80,9 @@ public class DevicesController : ControllerBase
 
             existingDevice.Name = device.Name;
             existingDevice.IsManuallyLocked = device.IsManuallyLocked;
+            existingDevice.IsLockedWhileDisconnected = device.IsLockedWhileDisconnected;
             existingDevice.LockedRanges = device.LockedRanges;
+            existingDevice.AllowedUsernames = device.AllowedUsernames;
 
             _dbRepository.UpdateEntity(existingDevice);
         }

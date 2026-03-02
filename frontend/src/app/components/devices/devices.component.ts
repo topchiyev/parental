@@ -11,6 +11,10 @@ import { User } from 'src/app/models/entity/User';
 import { UsersService } from 'src/app/services/users.service';
 import { TimeRange } from 'src/app/models/entity/TimeRange';
 
+export interface UsernameViewModel {
+  username: string;
+}
+
 @Component({
   selector: 'app-devices',
   templateUrl: './devices.component.html',
@@ -24,6 +28,7 @@ export class DevicesComponent {
   connection?: Connection;
 
   currentDevice?: Device;
+  currentAllowedUsernames: UsernameViewModel[] = [];
 
   @ViewChild('deviceEditorTemplate') deviceEditorTemplate?: TemplateRef<any>;
 	deviceEditorModalRef?: BsModalRef;
@@ -75,6 +80,7 @@ export class DevicesComponent {
 			return;
 
 		this.currentDevice = { ...device };
+    this.currentAllowedUsernames = device.allowedUsernames.map(username => ({ username }));
 
 		this.deviceEditorModalRef = this.modalService.show(this.deviceEditorTemplate!, { class: 'modal-md' });
 	}
@@ -82,6 +88,7 @@ export class DevicesComponent {
   closeDeviceEditor() {
     this.deviceEditorModalRef?.hide();
     this.currentDevice = undefined;
+    this.currentAllowedUsernames = [];
   }
 
 	editDevice(id: string) {
@@ -99,6 +106,8 @@ export class DevicesComponent {
       name: '',
       lastHandshakeOn: 0,
       isManuallyLocked: false,
+      isLockedWhileDisconnected: false,
+      allowedUsernames: [],
       lockedRanges: []
 		};
 		this.showDeviceEditor(device);
@@ -107,6 +116,8 @@ export class DevicesComponent {
   async submitDeviceEditor() {
     if (!this.currentDevice)
       return;
+
+    this.currentDevice.allowedUsernames = this.currentAllowedUsernames.map(t => t.username);
 
     await this.devicesService.update(this.currentDevice);
 
@@ -139,6 +150,14 @@ export class DevicesComponent {
       return;
 
     this.currentDevice.lockedRanges = this.currentDevice.lockedRanges.filter(t => t !== range);
+  }
+
+  addAllowedUsername() {
+    this.currentAllowedUsernames.push({ username: '' });
+  }
+
+  deleteAllowedUsername(username: UsernameViewModel) {
+    this.currentAllowedUsernames = this.currentAllowedUsernames.filter(t => t !== username);
   }
 
   formatDateTime(timestamp: number): string {
