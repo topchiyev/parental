@@ -35,6 +35,7 @@ public class Worker : BackgroundService
         using (var client = new HttpClient())
         {
             bool? lastLockedState = null;
+            bool isDisconnected = false;
 
             while (!cancellationToken.IsCancellationRequested)
             {
@@ -56,20 +57,22 @@ public class Worker : BackgroundService
                 }
                 catch (Exception ex)
                 {
+                    isDisconnected = true;
                     _logger.LogError(ex, "An error occurred while sending the heartbeat.");
                 }
 
-                var shouldLock = device != null && device.IsLocked();
-                if (!lastLockedState.HasValue || lastLockedState.Value != shouldLock)
-                {
-                    lastLockedState = shouldLock;
-                    _logger.LogInformation("Device lock state changed. ShouldLock={ShouldLock}", shouldLock);
-                }
+                var sessionInfo = SessionUserHelper.GetActiveConsoleUserInfo(_logger);
 
-                if (shouldLock)
+                if (sessionInfo.IsLoggedIn && device != null)
                 {
-                    var sessionInfo = SessionUserHelper.GetActiveConsoleUserInfo(_logger);
-                    if (sessionInfo.IsLoggedIn)
+                    var shouldLock = !device.AllowedUsernames.Contains(device.Username) && (device.IsLocked() || (device.IsLockedWhileDisconnected && isDisconnected));
+                    if (!lastLockedState.HasValue || lastLockedState.Value != shouldLock)
+                    {
+                        lastLockedState = shouldLock;
+                        _logger.LogInformation("Device lock state changed. ShouldLock={ShouldLock}", shouldLock);
+                    }
+
+                    if (shouldLock)
                     {
                         var started = SessionUserHelper.LockSession(_logger, sessionInfo.SessionId);
                         if (!started)
@@ -79,10 +82,6 @@ public class Worker : BackgroundService
                             if (!disconnected)
                                 _logger.LogWarning("Fallback disconnect also failed. SessionId={SessionId}", sessionInfo.SessionId);
                         }
-                    }
-                    else
-                    {
-                        _logger.LogInformation("Lock requested but no active interactive user session was found.");
                     }
                 }
 
