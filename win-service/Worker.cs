@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -39,6 +40,8 @@ public class Worker : BackgroundService
 
             while (!cancellationToken.IsCancellationRequested)
             {
+                await Task.Delay(5000, cancellationToken);
+
                 try
                 {
                     var serverAddress = Registry.GetValue(RegistryPath, "ServerAddress", string.Empty) as string;
@@ -52,6 +55,7 @@ public class Worker : BackgroundService
                             deviceJson = JsonSerializer.Serialize(newDevice);
                             device = newDevice;
                             Registry.SetValue(RegistryPath, "Device", deviceJson, RegistryValueKind.String);
+                            isDisconnected = false;
                         }
                     }
                 }
@@ -61,31 +65,55 @@ public class Worker : BackgroundService
                     _logger.LogError(ex, "An error occurred while sending the heartbeat.");
                 }
 
-                var sessionInfo = SessionUserHelper.GetActiveConsoleUserInfo(_logger);
-
-                if (sessionInfo.IsLoggedIn && device != null)
+                if (device == null)
                 {
-                    var shouldLock = !device.AllowedUsernames.Contains(device.Username) && (device.IsLocked() || (device.IsLockedWhileDisconnected && isDisconnected));
-                    if (!lastLockedState.HasValue || lastLockedState.Value != shouldLock)
-                    {
-                        lastLockedState = shouldLock;
-                        _logger.LogInformation("Device lock state changed. ShouldLock={ShouldLock}", shouldLock);
-                    }
-
-                    if (shouldLock)
-                    {
-                        var started = SessionUserHelper.LockSession(_logger, sessionInfo.SessionId);
-                        if (!started)
-                        {
-                            _logger.LogWarning("Lock requested but helper could not be started. SessionId={SessionId}", sessionInfo.SessionId);
-                            var disconnected = SessionUserHelper.DisconnectSession(_logger, sessionInfo.SessionId);
-                            if (!disconnected)
-                                _logger.LogWarning("Fallback disconnect also failed. SessionId={SessionId}", sessionInfo.SessionId);
-                        }
-                    }
+                    _logger.LogWarning("Device information is not available.");
+                    continue;
                 }
 
-                await Task.Delay(5000, cancellationToken);
+                var sessionInfo = SessionUserHelper.GetActiveConsoleUserInfo(_logger);
+                if (sessionInfo == null)
+                {
+                    _logger.LogWarning("Could not retrieve active console user info.");
+                    continue;
+                }
+
+                if (!sessionInfo.IsLoggedIn)
+                {
+                    continue;
+                }
+
+                var shouldLock = device.IsLocked();
+
+                if (isDisconnected && device.IsLockedWhileDisconnected)
+                {
+                    shouldLock = true;
+                }
+
+                if (device.AllowedUsernames.Any(username => username.Equals(sessionInfo.UserName, StringComparison.OrdinalIgnoreCase)))
+                {
+                    shouldLock = false;
+                }
+                
+                if (!lastLockedState.HasValue || lastLockedState.Value != shouldLock)
+                {
+                    lastLockedState = shouldLock;
+                    _logger.LogInformation("Device lock state changed. ShouldLock={ShouldLock}", shouldLock);
+                }
+
+                if (!shouldLock)
+                {
+                    continue;
+                }
+
+                var lockResult = SessionUserHelper.LockSession(_logger, sessionInfo.SessionId);
+                if (!lockResult)
+                {
+                    _logger.LogWarning("Lock requested but helper could not be started. SessionId={SessionId}", sessionInfo.SessionId);
+                    var disconnected = SessionUserHelper.DisconnectSession(_logger, sessionInfo.SessionId);
+                    if (!disconnected)
+                        _logger.LogWarning("Fallback disconnect also failed. SessionId={SessionId}", sessionInfo.SessionId);
+                }
             }
         }
     }
